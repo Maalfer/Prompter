@@ -1,4 +1,4 @@
-const CACHE_NAME = "prompter-v5";
+const CACHE_NAME = "prompter-v7";
 const ASSETS = [
   "./",
   "index.html",
@@ -29,6 +29,12 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // Nunca cachear peticiones a otro origen (p. ej. la API del backend en otro
+  // puerto): deben llegar siempre en vivo, nunca servirse desde caché.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

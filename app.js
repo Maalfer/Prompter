@@ -5,11 +5,9 @@
   const SPEED_KEY = "prompter.speed";
   const SIZE_KEY = "prompter.size";
   const MIRROR_KEY = "prompter.mirror";
-  const SCRIPTS_KEY = "prompter.scripts";
   const ACTIVE_KEY = "prompter.activeId";
-  const SEED_FLAG = "prompter.seeded";
 
-  const DEFAULT_SCRIPTS = /* contenido purgado del historial */;
+  const API_BASE = `${location.protocol}//${location.hostname}:8420`;
 
   // ---- Elements ----
   const reader = document.getElementById("reader");
@@ -31,7 +29,6 @@
   const btnLibrary = document.getElementById("btnLibrary");
   const btnLibraryClose = document.getElementById("btnLibraryClose");
   const btnNewScript = document.getElementById("btnNewScript");
-  const btnRestoreDefaults = document.getElementById("btnRestoreDefaults");
   const btnDone = document.getElementById("btnDone");
   const btnClear = document.getElementById("btnClear");
   const btnTop = document.getElementById("btnTop");
@@ -66,10 +63,6 @@
   let lastRecordingBlob = null;
   let lastRecordingUrl = null;
 
-  function genId() {
-    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
-  }
-
   // ---- Toast ----
   let toastTimeout = null;
   function toast(message, ms = 2800) {
@@ -83,9 +76,36 @@
     }, ms);
   }
 
-  // ---- Script storage ----
-  function saveScripts() {
-    localStorage.setItem(SCRIPTS_KEY, JSON.stringify(scripts));
+  // ---- API: los guiones viven en el backend (SQLite), nunca en el cliente ----
+  async function apiListScripts() {
+    const res = await fetch(`${API_BASE}/api/scripts`);
+    if (!res.ok) throw new Error("No se pudo listar los guiones");
+    return res.json();
+  }
+
+  async function apiCreateScript(title, text) {
+    const res = await fetch(`${API_BASE}/api/scripts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, text }),
+    });
+    if (!res.ok) throw new Error("No se pudo crear el guion");
+    return res.json();
+  }
+
+  async function apiUpdateScript(id, title, text) {
+    const res = await fetch(`${API_BASE}/api/scripts/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, text }),
+    });
+    if (!res.ok) throw new Error("No se pudo guardar el guion");
+    return res.json();
+  }
+
+  async function apiDeleteScript(id) {
+    const res = await fetch(`${API_BASE}/api/scripts/${id}`, { method: "DELETE" });
+    if (!res.ok && res.status !== 204) throw new Error("No se pudo eliminar el guion");
   }
 
   function saveActiveId() {
@@ -98,39 +118,8 @@
   }
 
   function init() {
-    try {
-      scripts = JSON.parse(localStorage.getItem(SCRIPTS_KEY) || "[]");
-    } catch (e) {
-      scripts = [];
-    }
-
-    let justSeeded = false;
-    if (!localStorage.getItem(SEED_FLAG)) {
-      if (scripts.length === 0) {
-        scripts = DEFAULT_SCRIPTS.map((s) => ({ ...s }));
-        saveScripts();
-        justSeeded = true;
-      }
-      localStorage.setItem(SEED_FLAG, "1");
-    }
-
     activeId = localStorage.getItem(ACTIVE_KEY);
-    if (justSeeded && !activeId && scripts[0]) {
-      activeId = scripts[0].id;
-    }
-
-    const activeScript = scripts.find((s) => s.id === activeId);
-    let text;
-    if (activeScript) {
-      text = activeScript.text;
-    } else {
-      activeId = null;
-      text = localStorage.getItem(STORAGE_KEY) || "";
-    }
-
-    textDisplay.textContent = text;
-    saveCurrentText(text);
-    saveActiveId();
+    textDisplay.textContent = localStorage.getItem(STORAGE_KEY) || "";
   }
 
   function applySpeedLabel(value) {
@@ -223,7 +212,7 @@
     titleInput.focus();
   }
 
-  function closeEditor() {
+  async function closeEditor() {
     const value = textInput.value;
     let title = titleInput.value.trim();
     textDisplay.textContent = value;
@@ -233,22 +222,22 @@
       if (!title) {
         title = value.trim().split("\n")[0].slice(0, 60) || "Guion sin título";
       }
-      if (editingId) {
-        const s = scripts.find((s) => s.id === editingId);
-        if (s) {
-          s.title = title;
-          s.text = value;
+      try {
+        if (editingId) {
+          const updated = await apiUpdateScript(editingId, title, value);
+          const idx = scripts.findIndex((s) => s.id === editingId);
+          if (idx >= 0) scripts[idx] = updated;
+          else scripts.push(updated);
+          activeId = editingId;
         } else {
-          scripts.push({ id: editingId, title, text: value });
+          const created = await apiCreateScript(title, value);
+          scripts.push(created);
+          activeId = created.id;
         }
-        activeId = editingId;
-      } else {
-        const id = genId();
-        scripts.push({ id, title, text: value });
-        activeId = id;
+        toast("Guion guardado");
+      } catch (err) {
+        toast("No se pudo guardar en el servidor. ¿Está arrancado el backend?");
       }
-      saveScripts();
-      toast("Guion guardado");
     } else {
       activeId = null;
     }
@@ -259,10 +248,28 @@
   }
 
   // ---- Library ----
-  function openLibrary() {
+  async function openLibrary() {
     pause();
-    renderLibrary();
     library.classList.remove("hidden");
+    libraryList.innerHTML = "";
+    const loading = document.createElement("div");
+    loading.className = "emptyHint";
+    loading.textContent = "Cargando…";
+    libraryList.appendChild(loading);
+
+    try {
+      scripts = await apiListScripts();
+    } catch (err) {
+      libraryList.innerHTML = "";
+      const hint = document.createElement("div");
+      hint.className = "emptyHint";
+      hint.textContent =
+        "No se pudo conectar con el servidor de guiones. ¿Está arrancado el backend?";
+      libraryList.appendChild(hint);
+      return;
+    }
+
+    renderLibrary();
   }
 
   function renderLibrary() {
@@ -324,32 +331,20 @@
     scrollArea.scrollTop = 0;
   }
 
-  function deleteScript(id) {
+  async function deleteScript(id) {
     if (!confirm("¿Eliminar este guion?")) return;
+    try {
+      await apiDeleteScript(id);
+    } catch (err) {
+      toast("No se pudo eliminar el guion.");
+      return;
+    }
     scripts = scripts.filter((s) => s.id !== id);
-    saveScripts();
     if (activeId === id) {
       activeId = null;
       saveActiveId();
     }
     renderLibrary();
-  }
-
-  function restoreDefaults() {
-    const existingIds = new Set(scripts.map((s) => s.id));
-    const missing = DEFAULT_SCRIPTS.filter((s) => !existingIds.has(s.id));
-    if (missing.length === 0) {
-      toast("No falta ningún guion de ejemplo");
-      return;
-    }
-    scripts.push(...missing.map((s) => ({ ...s })));
-    saveScripts();
-    renderLibrary();
-    toast(
-      missing.length === 1
-        ? "Guion restaurado"
-        : missing.length + " guiones restaurados"
-    );
   }
 
   // ---- Camera ----
@@ -522,7 +517,6 @@
   btnLibrary.addEventListener("click", openLibrary);
   btnLibraryClose.addEventListener("click", () => library.classList.add("hidden"));
   btnNewScript.addEventListener("click", () => openEditor(null, false));
-  btnRestoreDefaults.addEventListener("click", restoreDefaults);
   btnDone.addEventListener("click", closeEditor);
 
   btnClear.addEventListener("click", () => {
