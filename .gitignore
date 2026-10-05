@@ -5,3 +5,6 @@ Thumbs.db
 backend/scripts.db
 backend/__pycache__/
 backend/.venv/
+
+# Certificado TLS autofirmado: se genera en local, nunca se sube
+certs/
