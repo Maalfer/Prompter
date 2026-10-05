@@ -39,7 +39,3 @@ Abre `http://localhost:5500`.
 
 > La grabación de cámara requiere HTTPS o `localhost` por restricciones del navegador.
 > El frontend busca la API en el puerto 8420 del mismo host desde el que se accede a la página.
-
-## Despliegue
-
-El frontend es estático (cualquier hosting lo sirve tal cual). El backend necesita un host con Python y almacenamiento persistente para `backend/scripts.db`.
