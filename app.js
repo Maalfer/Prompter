@@ -31,6 +31,7 @@
   const btnLibrary = document.getElementById("btnLibrary");
   const btnLibraryClose = document.getElementById("btnLibraryClose");
   const btnNewScript = document.getElementById("btnNewScript");
+  const btnRestoreDefaults = document.getElementById("btnRestoreDefaults");
   const btnDone = document.getElementById("btnDone");
   const btnClear = document.getElementById("btnClear");
   const btnTop = document.getElementById("btnTop");
@@ -334,6 +335,23 @@
     renderLibrary();
   }
 
+  function restoreDefaults() {
+    const existingIds = new Set(scripts.map((s) => s.id));
+    const missing = DEFAULT_SCRIPTS.filter((s) => !existingIds.has(s.id));
+    if (missing.length === 0) {
+      toast("No falta ningún guion de ejemplo");
+      return;
+    }
+    scripts.push(...missing.map((s) => ({ ...s })));
+    saveScripts();
+    renderLibrary();
+    toast(
+      missing.length === 1
+        ? "Guion restaurado"
+        : missing.length + " guiones restaurados"
+    );
+  }
+
   // ---- Camera ----
   async function toggleCamera() {
     if (cameraStream) {
@@ -504,6 +522,7 @@
   btnLibrary.addEventListener("click", openLibrary);
   btnLibraryClose.addEventListener("click", () => library.classList.add("hidden"));
   btnNewScript.addEventListener("click", () => openEditor(null, false));
+  btnRestoreDefaults.addEventListener("click", restoreDefaults);
   btnDone.addEventListener("click", closeEditor);
 
   btnClear.addEventListener("click", () => {

@@ -342,6 +342,17 @@ button:active { transform: scale(0.92); }
 
 #btnNewScript { flex: none; margin-top: 12px; }
 
+.linkBtn {
+  flex: none;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  padding: 8px;
+  text-decoration: underline;
+}
+
 /* ---------- Review panel ---------- */
 #reviewPanel {
   background: #000;
