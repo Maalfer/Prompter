@@ -1,15 +1,26 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "prompter.text";
   const SPEED_KEY = "prompter.speed";
   const SIZE_KEY = "prompter.size";
   const MIRROR_KEY = "prompter.mirror";
-  const ACTIVE_KEY = "prompter.activeId";
+  const TOKEN_KEY = "prompter.token";
 
   const API_BASE = `${location.protocol}//${location.hostname}:8420`;
 
   // ---- Elements ----
+  const authView = document.getElementById("auth");
+  const authForm = document.getElementById("authForm");
+  const authUsername = document.getElementById("authUsername");
+  const authPassword = document.getElementById("authPassword");
+  const authPasswordConfirm = document.getElementById("authPasswordConfirm");
+  const authError = document.getElementById("authError");
+  const authSubmit = document.getElementById("authSubmit");
+  const tabLogin = document.getElementById("tabLogin");
+  const tabRegister = document.getElementById("tabRegister");
+  const accountUsername = document.getElementById("accountUsername");
+  const btnLogout = document.getElementById("btnLogout");
+
   const reader = document.getElementById("reader");
   const editor = document.getElementById("editor");
   const library = document.getElementById("library");
@@ -40,6 +51,11 @@
   const btnSave = document.getElementById("btnSave");
   const speedRange = document.getElementById("speedRange");
   const sizeRange = document.getElementById("sizeRange");
+
+  // ---- Auth state ----
+  let authToken = null;
+  let currentUser = null;
+  let authMode = "login";
 
   // ---- Teleprompter scroll state ----
   let playing = false;
@@ -76,15 +92,78 @@
     }, ms);
   }
 
+  // ---- Sesión: claves de localStorage por usuario, para que si varias
+  // cuentas usan el mismo navegador no se mezclen sus guiones leídos ----
+  function textStorageKey() {
+    return `prompter.text.${currentUser.id}`;
+  }
+
+  function activeStorageKey() {
+    return `prompter.activeId.${currentUser.id}`;
+  }
+
+  function saveToken(token) {
+    authToken = token;
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  }
+
+  function authHeader() {
+    return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  }
+
+  function handleUnauthorized() {
+    saveToken(null);
+    currentUser = null;
+    showAuthView();
+    toast("Tu sesión ha caducado. Inicia sesión de nuevo.");
+  }
+
+  // Wrapper de fetch para todo lo que requiere sesión: añade el token y
+  // fuerza el cierre de sesión si el backend responde 401.
+  async function apiFetch(path, options = {}) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: { ...(options.headers || {}), ...authHeader() },
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      throw new Error("No autenticado");
+    }
+    return res;
+  }
+
+  async function apiRegister(username, password) {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "No se pudo crear la cuenta");
+    return data;
+  }
+
+  async function apiLogin(username, password) {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "No se pudo iniciar sesión");
+    return data;
+  }
+
   // ---- API: los guiones viven en el backend (SQLite), nunca en el cliente ----
   async function apiListScripts() {
-    const res = await fetch(`${API_BASE}/api/scripts`);
+    const res = await apiFetch("/api/scripts");
     if (!res.ok) throw new Error("No se pudo listar los guiones");
     return res.json();
   }
 
   async function apiCreateScript(title, text) {
-    const res = await fetch(`${API_BASE}/api/scripts`, {
+    const res = await apiFetch("/api/scripts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, text }),
@@ -94,7 +173,7 @@
   }
 
   async function apiUpdateScript(id, title, text) {
-    const res = await fetch(`${API_BASE}/api/scripts/${id}`, {
+    const res = await apiFetch(`/api/scripts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, text }),
@@ -104,22 +183,22 @@
   }
 
   async function apiDeleteScript(id) {
-    const res = await fetch(`${API_BASE}/api/scripts/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/scripts/${id}`, { method: "DELETE" });
     if (!res.ok && res.status !== 204) throw new Error("No se pudo eliminar el guion");
   }
 
   function saveActiveId() {
-    if (activeId) localStorage.setItem(ACTIVE_KEY, activeId);
-    else localStorage.removeItem(ACTIVE_KEY);
+    if (activeId) localStorage.setItem(activeStorageKey(), activeId);
+    else localStorage.removeItem(activeStorageKey());
   }
 
   function saveCurrentText(value) {
-    localStorage.setItem(STORAGE_KEY, value);
+    localStorage.setItem(textStorageKey(), value);
   }
 
   function init() {
-    activeId = localStorage.getItem(ACTIVE_KEY);
-    textDisplay.textContent = localStorage.getItem(STORAGE_KEY) || "";
+    activeId = localStorage.getItem(activeStorageKey());
+    textDisplay.textContent = localStorage.getItem(textStorageKey()) || "";
   }
 
   function applySpeedLabel(value) {
@@ -511,6 +590,125 @@
     closeReview();
   }
 
+  // ---- Auth: vistas ----
+  function showAuthView() {
+    reader.classList.add("hidden");
+    editor.classList.add("hidden");
+    library.classList.add("hidden");
+    reviewPanel.classList.add("hidden");
+    authView.classList.remove("hidden");
+    pause();
+    stopCamera();
+  }
+
+  function showApp() {
+    authView.classList.add("hidden");
+    reader.classList.remove("hidden");
+    accountUsername.textContent = currentUser.username;
+    init();
+    applyPendingLaunchAction();
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    tabLogin.classList.toggle("active", mode === "login");
+    tabRegister.classList.toggle("active", mode === "register");
+    authPasswordConfirm.classList.toggle("hidden", mode === "login");
+    authPassword.setAttribute(
+      "autocomplete",
+      mode === "login" ? "current-password" : "new-password"
+    );
+    authSubmit.textContent = mode === "login" ? "Entrar" : "Crear cuenta";
+    authError.classList.add("hidden");
+  }
+
+  function showAuthError(message) {
+    authError.textContent = message;
+    authError.classList.remove("hidden");
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const username = authUsername.value.trim();
+    const password = authPassword.value;
+    authError.classList.add("hidden");
+
+    if (authMode === "register") {
+      if (password !== authPasswordConfirm.value) {
+        showAuthError("Las contraseñas no coinciden.");
+        return;
+      }
+      if (password.length < 6) {
+        showAuthError("La contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
+    }
+
+    authSubmit.disabled = true;
+    try {
+      const data =
+        authMode === "login"
+          ? await apiLogin(username, password)
+          : await apiRegister(username, password);
+      saveToken(data.token);
+      currentUser = data.user;
+      authForm.reset();
+      showApp();
+    } catch (err) {
+      showAuthError(err.message);
+    } finally {
+      authSubmit.disabled = false;
+    }
+  }
+
+  function logout() {
+    saveToken(null);
+    currentUser = null;
+    textDisplay.textContent = "";
+    showAuthView();
+  }
+
+  // ---- Arranque: valida la sesión guardada contra el backend ----
+  let pendingLaunchAction = null;
+
+  function applyPendingLaunchAction() {
+    if (pendingLaunchAction === "library") openLibrary();
+    else if (pendingLaunchAction === "new") openEditor(null, false);
+    pendingLaunchAction = null;
+  }
+
+  async function boot() {
+    loadSettings();
+
+    const launchParams = new URLSearchParams(location.search);
+    pendingLaunchAction = launchParams.get("action");
+    if (pendingLaunchAction) {
+      history.replaceState(null, "", location.pathname);
+    }
+
+    authToken = localStorage.getItem(TOKEN_KEY);
+    if (!authToken) {
+      showAuthView();
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, { headers: authHeader() });
+      if (res.status === 401) {
+        saveToken(null);
+        showAuthView();
+        return;
+      }
+      if (!res.ok) throw new Error("backend error");
+      currentUser = await res.json();
+      showApp();
+    } catch (err) {
+      // El backend no responde: no borramos la sesión guardada, solo avisamos.
+      showAuthView();
+      toast("No se pudo conectar con el servidor. ¿Está arrancado el backend?");
+    }
+  }
+
   // ---- Events ----
   btnPlay.addEventListener("click", togglePlay);
   btnEdit.addEventListener("click", () => openEditor(null, true));
@@ -575,20 +773,13 @@
     if (cameraStream) stopCamera();
   });
 
-  // ---- Init ----
-  init();
-  loadSettings();
+  tabLogin.addEventListener("click", () => setAuthMode("login"));
+  tabRegister.addEventListener("click", () => setAuthMode("register"));
+  authForm.addEventListener("submit", handleAuthSubmit);
+  btnLogout.addEventListener("click", logout);
 
-  const launchParams = new URLSearchParams(location.search);
-  const launchAction = launchParams.get("action");
-  if (launchAction === "library") {
-    openLibrary();
-  } else if (launchAction === "new") {
-    openEditor(null, false);
-  }
-  if (launchAction) {
-    history.replaceState(null, "", location.pathname);
-  }
+  // ---- Init ----
+  boot();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

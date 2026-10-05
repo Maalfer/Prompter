@@ -4,10 +4,11 @@
 
 <h1 align="center">Prompter</h1>
 
-<p align="center">Teleprompter ligero con grabación de cámara integrada. Los guiones se guardan en una base de datos propia, no en el navegador.</p>
+<p align="center">Teleprompter con cuentas de usuario. Cada persona gestiona sus propios guiones; los datos viven en una base de datos propia, no en el navegador.</p>
 
 ## Funciones
 
+- Cuentas de usuario (registro e inicio de sesión); cada quien ve y gestiona solo sus guiones
 - Scroll automático con velocidad y tamaño de texto ajustables
 - Biblioteca de guiones (crear, editar, eliminar) guardada en SQLite vía una API propia
 - Grabación de cámara y micrófono mientras lees el guion
@@ -17,7 +18,7 @@
 ## Arquitectura
 
 - **Frontend**: HTML/CSS/JS sin dependencias ni build.
-- **Backend**: API mínima en FastAPI (`backend/`) con SQLite como base de datos. El contenido de los guiones vive solo ahí, nunca en el repositorio.
+- **Backend**: API en FastAPI (`backend/`) con SQLite. Autenticación con contraseñas cifradas (bcrypt) y sesión por token (JWT); cada guion pertenece a un usuario y solo él puede leerlo, editarlo o borrarlo. El contenido vive solo en la base de datos local, nunca en el repositorio.
 
 ## Uso local
 
@@ -35,9 +36,10 @@ Frontend, solo en `localhost` (puerto 5500):
 python3 -m http.server 5500
 ```
 
-Abre `http://localhost:5500`.
+Abre `http://localhost:5500` y crea una cuenta desde la propia app.
 
 > El frontend busca la API en el puerto 8420 del mismo host desde el que se accede a la página.
+> La primera cuenta que se registre hereda automáticamente los guiones que hubiera antes de tener usuarios (si los hay).
 
 ### Acceso desde el móvil / otros dispositivos de la red
 

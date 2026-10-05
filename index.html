@@ -19,7 +19,28 @@
 </head>
 <body>
 
-<div id="reader" class="view">
+<div id="auth" class="view">
+  <div class="authCard">
+    <img src="icons/icon-192.png" alt="" class="authLogo">
+    <h1>Prompter</h1>
+    <p class="authSubtitle">Tu teleprompter, con tus guiones.</p>
+
+    <div class="authTabs">
+      <button id="tabLogin" class="authTab active" type="button">Iniciar sesión</button>
+      <button id="tabRegister" class="authTab" type="button">Crear cuenta</button>
+    </div>
+
+    <form id="authForm" autocomplete="on">
+      <input type="text" id="authUsername" name="username" placeholder="Usuario" autocomplete="username" minlength="3" maxlength="40" required>
+      <input type="password" id="authPassword" name="password" placeholder="Contraseña" autocomplete="current-password" minlength="6" required>
+      <input type="password" id="authPasswordConfirm" name="passwordConfirm" placeholder="Repite la contraseña" autocomplete="new-password" class="hidden">
+      <div id="authError" class="authError hidden"></div>
+      <button type="submit" id="authSubmit" class="btn primary">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="reader" class="view hidden">
   <video id="cameraPreview" autoplay muted playsinline></video>
 
   <div id="scrollArea">
@@ -67,7 +88,13 @@
 
 <div id="library" class="view hidden">
   <div id="libraryHeader">
-    <h1>Mis guiones</h1>
+    <div id="libraryHeaderText">
+      <h1>Mis guiones</h1>
+      <div id="accountRow">
+        <span id="accountUsername"></span>
+        <button id="btnLogout" class="textBtn" type="button">Cerrar sesión</button>
+      </div>
+    </div>
     <button id="btnLibraryClose" class="iconBtn" title="Cerrar" aria-label="Cerrar">✕</button>
   </div>
   <div id="libraryList"></div>

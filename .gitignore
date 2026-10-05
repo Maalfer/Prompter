@@ -5,6 +5,7 @@ Thumbs.db
 backend/scripts.db
 backend/__pycache__/
 backend/.venv/
+backend/.jwt_secret
 
 # Certificado TLS autofirmado: se genera en local, nunca se sube
 certs/
