@@ -1,0 +1,55 @@
+{
+  "id": "./",
+  "name": "Prompter — Teleprompter",
+  "short_name": "Prompter",
+  "description": "Teleprompter ligero con biblioteca de guiones y grabación de cámara integrada",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["productivity", "video", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mis guiones",
+      "short_name": "Guiones",
+      "description": "Abrir la biblioteca de guiones",
+      "url": "./?action=library"
+    },
+    {
+      "name": "Nuevo guion",
+      "short_name": "Nuevo",
+      "description": "Crear un guion en blanco",
+      "url": "./?action=new"
+    }
+  ]
+}

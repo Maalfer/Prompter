@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="description" content="Teleprompter ligero con grabación de cámara integrada">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prompter">
+<title>Prompter</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="reader" class="view">
+  <video id="cameraPreview" autoplay muted playsinline></video>
+
+  <div id="scrollArea">
+    <div id="textDisplay"></div>
+  </div>
+  <div id="centerLine" aria-hidden="true"></div>
+
+  <div id="recTimer" class="hidden">● 00:00</div>
+
+  <div id="topBar">
+    <button id="btnLibrary" class="iconBtn" title="Mis guiones" aria-label="Mis guiones">☰</button>
+    <button id="btnEdit" class="iconBtn" title="Editar texto" aria-label="Editar texto">✎</button>
+    <button id="btnMirror" class="iconBtn" title="Espejo de texto" aria-label="Espejo de texto">⇋</button>
+    <button id="btnCamera" class="iconBtn" title="Cámara" aria-label="Activar cámara">📷</button>
+    <button id="btnFullscreen" class="iconBtn" title="Pantalla completa" aria-label="Pantalla completa">⤢</button>
+  </div>
+
+  <div id="bottomBar">
+    <div class="controlsRow">
+      <button id="btnTop" class="iconBtn" title="Ir al inicio" aria-label="Ir al inicio">⤒</button>
+      <button id="btnPlay" class="playBtn" title="Reproducir / Pausa" aria-label="Reproducir o pausar">▶</button>
+      <button id="btnRecord" class="recordBtn hidden" title="Grabar" aria-label="Iniciar o detener grabación"></button>
+    </div>
+    <div class="slidersRow">
+      <div class="sliderGroup">
+        <label for="speedRange">Velocidad</label>
+        <input type="range" id="speedRange" min="1" max="10" step="0.1" value="3">
+      </div>
+      <div class="sliderGroup">
+        <label for="sizeRange">Tamaño</label>
+        <input type="range" id="sizeRange" min="16" max="80" step="1" value="36">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="editor" class="view hidden">
+  <input type="text" id="titleInput" placeholder="Título del guion">
+  <textarea id="textInput" placeholder="Pega o escribe aquí tu guion..."></textarea>
+  <div id="editorBar">
+    <button id="btnClear" class="btn">Borrar</button>
+    <button id="btnDone" class="btn primary">Guardar y leer</button>
+  </div>
+</div>
+
+<div id="library" class="view hidden">
+  <div id="libraryHeader">
+    <h1>Mis guiones</h1>
+    <button id="btnLibraryClose" class="iconBtn" title="Cerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div id="libraryList"></div>
+  <button id="btnNewScript" class="btn primary">+ Nuevo guion</button>
+</div>
+
+<div id="reviewPanel" class="view hidden">
+  <video id="reviewVideo" controls playsinline></video>
+  <div id="reviewBar">
+    <button id="btnDiscard" class="btn">Descartar</button>
+    <button id="btnSave" class="btn primary">Guardar / Compartir</button>
+  </div>
+</div>
+
+<div id="toast" class="hidden" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
