@@ -1,4 +1,4 @@
-const CACHE_NAME = "prompter-v8";
+const CACHE_NAME = "prompter-v9";
 const ASSETS = [
   "./",
   "index.html",
@@ -34,6 +34,8 @@ self.addEventListener("fetch", (event) => {
   // puerto): deben llegar siempre en vivo, nunca servirse desde caché.
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // La API (mismo origen vía proxy) tampoco se cachea.
+  if (url.pathname.startsWith("/api/")) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

@@ -6,7 +6,9 @@
   const MIRROR_KEY = "prompter.mirror";
   const TOKEN_KEY = "prompter.token";
 
-  const API_BASE = `${location.protocol}//${location.hostname}:8420`;
+  // Mismo origen: el servidor del frontend reenvía /api al backend (sin CORS ni
+  // problemas de certificado, y funciona tanto por HTTP como por HTTPS).
+  const API_BASE = "";
 
   // ---- Elements ----
   const authView = document.getElementById("auth");
